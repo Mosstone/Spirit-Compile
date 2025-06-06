@@ -16,4 +16,10 @@
     able to use and execute packages and manipulate data at low latency, marginally suitable for backend but
     providing the extensive scientific and machine learning libraries to applications which would require it
 
-    
+
+developed using the following:
+    go version go1.23.9 linux/amd64
+    6.14.6-200.fc41.x86_64
+        fedora 41, current release
+
+Buerer, D. (2025). Spirit Compile (Version 1.0.0) [Computer software]. https://doi.org/10.5281/zenodo.1560533
