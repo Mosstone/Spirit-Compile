@@ -1,18 +1,30 @@
 #!/usr/bin/env make
 
 # Variables
-# TARBALL     := tarball.tar.gz
-# DISTDIR     := Application
-EXECDIR       := spiritc
+INSTALL   ?= install -m 755
+PREFIX    ?= $(HOME)/.local
+DESTDIR   ?=
+DIRECT    := $(DESTDIR)$(PREFIX)
 
-appdirname    := Spirit-Compile
-launchname    := spiritc
-commandname   := spiritc
+BINDIR    := $(DIRECT)/bin
+LIBDIR    := $(DIRECT)/lib
+SYSCONFDIR:= $(DIRECT)/etc
+DATADIR   := $(DIRECT)/share
+MANDIR    := $(DATADIR)/man
 
+EXECDIR     := spiritc
+TARBALL     := null # tarball.tar.gz
+DISTDIR     := Application
+COMMAND     := spiritc
 
 .PHONY: all unpack link run clean
 
 all: run
+
+
+
+
+
 
 unpack:
 # 	mkdir -p $(DISTDIR)
@@ -33,13 +45,13 @@ unpack:
 # 		elixirc elixirtest.ex 2> /dev/null .ex
 
 link: unpack
-	mkdir -p $(HOME)/.local/bin
-	ln -sf $(HOME)/$(appdirname)/$(launchname) $(HOME)/.local/bin/$(commandname)
-	chmod +x $(HOME)/$(appdirname)/$(launchname)
+
+	@mkdir -p $(PREFIX)/bin/
+	@ln -sf $(CURDIR)/$(EXECDIR) $(PREFIX)/bin/$(COMMAND)
 
 run: link
+
 	./$(EXECDIR) --version
 
 clean:
-#	rm -rf $(TARDIR)
-	rm $(HOME)/.local/bin/$(commandname)
+	rm $(PREFIX)/bin/$(COMMAND)
