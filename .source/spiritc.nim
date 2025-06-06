@@ -1,33 +1,41 @@
-# import os
-# import osproc
-# import std/strutils
-
-import  std/strutils,
-        osproc,
-        # streams,
-        os
+import  strutils
+import  osproc
+import  os
 
 
 proc help() =
     echo """[094m
     Invokes the correct compiler for a given language using arguments optimized for performance over safety
 
+    Arguments:                          Flags:
+        spiritc     <target>.<ext>    | --verbose
+                                      | --quiet         
+                                      | -o          <target>
+
+    
+    Output is in the same directory as source unless -o is present. If -o and nothing following pwd is used
+
     Supported compilers:
         Nim
         Elixir
         Go
         Rust
-        Julia   (via PackageCompiler.jl)
+        Julia   (via PackageCompiler.jl)    (experimental)
+
+    Buerer, D. (2025). Spirit Compile (Version 1.0.0) [Computer software]. https://doi.org/10.5281/zenodo.15605336 https://github.com/Mosstone/Spirit-Compile
     [0m"""
 
 proc version() =
     echo """[094m
-        v1.2.3
+        v2.0.1
     [0m"""
 
 # Default flags
 var quietitude = false
 var verbosity = false
+var destination = false
+
+var outputflag = "null"
 
 proc arguments() =
 
@@ -41,15 +49,27 @@ proc arguments() =
             of "--help":
                 help()
                 quit(0)
+
             of "--version":
                 version()
                 quit(0)
 
             of "--quiet":
                 quietitude = true
+            of "-q":
+                quietitude = true
 
             of "--verbose":
                 verbosity = true
+            of "-v":
+                verbosity = true
+
+            of "--output":
+                destination = true
+                outputflag = "--output"
+            of "-o":
+                destination = true
+                outputflag = "-o"
 
             else:
                 discard
@@ -127,7 +147,7 @@ if paramCount() > 0:
     language = arg.split('.')[^1]
 
 else:
-    echo "[094m    dfgsrgreg[0m"
+    echo "[094m    dfgsrgreg💥[0m"
     quit(1)
 
 
@@ -165,11 +185,11 @@ proc main() =
             proc build(): string =
                 result = execProcess("CC=musl-gcc nim c -d:release --opt:speed --mm:orc --passC:-flto --passL:-flto --passL:-static " & arg)
 
-            stdout.write("\e[94m    Compiling Nim...\e[0m")
-            flushFile(stdout)
-            if verbosity == false:   discard build()
-            if verbosity == true:    echo build()
-            stdout.write("\r\e[94m  ✓ Compiling Nim...done\e[0m\n")
+            if not quietitude: stdout.write("\e[94m    Compiling Nim...\e[0m")
+            if not quietitude: flushFile(stdout)
+            if not verbosity:  discard build()
+            if verbosity:      echo build()
+            if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Nim...done\e[0m\n")
 
 
 #<      Elixir
@@ -178,11 +198,11 @@ proc main() =
             proc build(): string =
                 result = execProcess("elixirc " & arg)
 
-            stdout.write("\e[94m    Compiling Elixir...\e[0m")
-            flushFile(stdout)
-            if verbosity == false:   discard build()
-            if verbosity == true:    echo build()
-            stdout.write("\r\e[94m  ✓ Compiling Elixir...done\e[0m\n")
+            if not quietitude: stdout.write("\e[94m    Compiling Elixir...\e[0m")
+            if not quietitude: flushFile(stdout)
+            if not verbosity:  discard build()
+            if verbosity:      echo build()
+            if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Elixir...done\e[0m\n")
 
 
 #<      Go
@@ -191,11 +211,11 @@ proc main() =
             proc build(): string =
                 result = execProcess("GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags='-s -w' " & arg)
 
-            stdout.write("\e[94m    Compiling Go...\e[0m")
-            flushFile(stdout)
-            if verbosity == false:   discard build()
-            if verbosity == true:    echo build()
-            stdout.write("\r\e[94m  ✓ Compiling Go...done\e[0m\n")
+            if not quietitude: stdout.write("\e[94m    Compiling Go...\e[0m")
+            if not quietitude: flushFile(stdout)
+            if not verbosity:  discard build()
+            if verbosity:      echo build()
+            if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Go...done\e[0m\n")
             flushFile(stdout)
 
 
@@ -247,11 +267,11 @@ EOF
                     """
                 echo execProcess("bash -c '" & script & "'")
 
-            stdout.write("\e[94m    Compiling Julia...\e[0m")
-            flushFile(stdout)
-            if verbosity == false:   discard build()
-            if verbosity == true:    echo build()
-            stdout.write("\r\e[94m  ✓ Compiling Julia...done\e[0m\n")
+            if not quietitude: stdout.write("\e[94m    Compiling Julia...\e[0m")
+            if not quietitude: flushFile(stdout)
+            if not verbosity:  discard build()
+            if verbosity:      echo build()
+            if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Julia...done\e[0m\n")
 
 
 #<      Rust
@@ -260,14 +280,37 @@ EOF
             proc build(): string =
                 result = execProcess("rustc -C opt-level=3 -C target-cpu=native file.rs " & arg)
 
-            stdout.write("\e[94m    Compiling Rust...\e[0m")
-            flushFile(stdout)
-            if verbosity == false:   discard build()
-            if verbosity == true:    echo build()
-            stdout.write("\r\e[94m  ✓ Compiling Rust...done\e[0m\n")
+            if not quietitude: stdout.write("\e[94m    Compiling Rust...\e[0m")
+            if not quietitude: flushFile(stdout)
+            if not verbosity:  discard build()
+            if verbosity:      echo build()
+            if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Rust...done\e[0m\n")
 
 
         else:
             echo "[094m    Unknown extension...\n[0m"
+            quit(1)
+
+    if destination:
+
+        proc loc(): string =
+
+            var mut: string = paramStr(commandLineParams().find("-o") + 2)
+            var loc = ""
+            try:
+                loc = expandFilename(mut)
+            except:
+                echo "\n    [095m>><<[094m " & mut & " does not exist or is not a directory[0m"
+            return loc
+
+
+        var script: string = """
+            src="""" & paramStr(1).split('.')[0] & """"
+            loc="""" & loc() & """"
+
+            mv $src $loc
+
+        """
+        echo execProcess("bash -c '" & script & "'")
 
 main()
