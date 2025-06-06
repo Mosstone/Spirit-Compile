@@ -3,6 +3,9 @@ import  osproc
 import  os
 
 
+var versionnn = "v.2.0.2"
+
+
 proc help() =
     echo """[094m
     Invokes the correct compiler for a given language using arguments optimized for performance over safety
@@ -22,12 +25,13 @@ proc help() =
         Rust
         Julia   (via PackageCompiler.jl)    (experimental)
 
-    Buerer, D. (2025). Spirit Compile (Version 1.0.0) [Computer software]. https://doi.org/10.5281/zenodo.15605336 https://github.com/Mosstone/Spirit-Compile
+    Buerer, D. (2025). Spirit Compile (""" & versionnn & """) [Computer software]. https://doi.org/10.5281/zenodo.15605336 https://github.com/Mosstone/Spirit-Compile
     [0m"""
 
 proc version() =
     echo """[094m
-        v2.0.1
+        """ & versionnn & """
+
     [0m"""
 
 # Default flags
@@ -305,7 +309,7 @@ EOF
 
 
         var script: string = """
-            src="""" & paramStr(1).split('.')[0] & """"
+            src="""" & paramStr(1).rsplit('.', 1)[0] & """"
             loc="""" & loc() & """"
 
             mv $src $loc
