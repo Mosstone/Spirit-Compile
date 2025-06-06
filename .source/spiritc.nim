@@ -25,6 +25,8 @@ proc help() =
         Rust
         Julia   (via PackageCompiler.jl)    (experimental)
 
+    Intended for standalone modules, not project directories
+
     Buerer, D. (2025). Spirit Compile (""" & versionnn & """) [Computer software]. https://doi.org/10.5281/zenodo.15605336 https://github.com/Mosstone/Spirit-Compile
     [0m"""
 
@@ -159,27 +161,6 @@ else:
 
 
 
-# Compiler invocations
-
-
-
-
-
-
-
-
-
-# proc juliacom(): string =
-#     result = execProcess("julia -e 'using PackageCompiler; create_app(\"" & arg & \"", "\" $arg)")
-
-
-
-
-
-
-
-
-
 proc main() =
     case language
     
@@ -222,9 +203,6 @@ proc main() =
             if not quietitude: stdout.write("\r\e[94m  ✓ Compiling Go...done\e[0m\n")
             flushFile(stdout)
 
-
-
-    
 
 #<      Julia
         of "jl":
@@ -295,6 +273,7 @@ EOF
             echo "[094m    Unknown extension...\n[0m"
             quit(1)
 
+#<  Moves the compiled file is -o is detected
     if destination:
 
         proc loc(): string =
