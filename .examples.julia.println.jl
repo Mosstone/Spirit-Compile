@@ -2,7 +2,7 @@
 
 
 function monolith()
-    println("Compile Test")
+    println("test")
 end
 
 
