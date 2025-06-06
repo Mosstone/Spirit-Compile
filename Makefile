@@ -3,7 +3,12 @@
 # Variables
 # TARBALL     := tarball.tar.gz
 # DISTDIR     := Application
-EXECDIR     := spiritc
+EXECDIR       := spiritc
+
+appdirname    := Spirit-Compile
+launchname    := spiritc
+commandname   := spiritc
+
 
 .PHONY: all unpack link run clean
 
@@ -29,12 +34,12 @@ unpack:
 
 link: unpack
 	mkdir -p $(HOME)/.local/bin
-	ln -sf $(HOME)/Spirit-Compile/spiritc $(HOME)/.local/bin/spiritc
-	chmod +x $(HOME)/Spirit-Compile/spiritc
+	ln -sf $(HOME)/$(appdirname)/$(launchname) $(HOME)/.local/bin/$(commandname)
+	chmod +x $(HOME)/$(appdirname)/$(launchname)
 
 run: link
 	./$(EXECDIR) --version
 
 clean:
 #	rm -rf $(TARDIR)
-	rm $(HOME)/.local/bin/spiritc
+	rm $(HOME)/.local/bin/$(commandname)
