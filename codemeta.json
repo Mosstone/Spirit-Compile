@@ -1,0 +1,19 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "author": [
+    {
+      "@id": "https://orcid.org/0009-0002-5084-0465",
+      "@type": "Person",
+      "familyName": "Buerer",
+      "givenName": "Daniel"
+    }
+  ],
+  "datePublished": "2025-06-05",
+  "description": "Invokes the correct compiler for a given language using arguments optimized for performance over safety\nThe compile language is detected using the file extension which Spirit assumes will always be consistent\nNotably, spiritc targetting a .jl file is able to use PackageCompile.jl to compile any one module into a compiled binary. This is done by creating a valid, ephemeral environment in memory, populating it with a default module and set of identifiers, compiling it in that fashion, and then copying it back to the pwd it started in before closing the ephemeral environment. The result is a standalone julia module which is able to use and execute packages and manipulate data at low latency, marginally suitable for backend but providing the extensive scientific and machine learning libraries to applications which would require it\n",
+  "identifier": "https://doi.org/10.5281/zenodo.15605336",
+  "license": "https://spdx.org/licenses/Apache-2.0",
+  "name": "Spirit Compile",
+  "url": "https://github.com/Mosstone/Tholos",
+  "version": "1.0.0"
+}
