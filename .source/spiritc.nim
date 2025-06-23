@@ -3,10 +3,10 @@ import  osproc
 import  os
 # import  times
 import threadpool
+import sequtils
 
 
-var version = "v.2.3.1"
-
+var version = "v.2.3.3"
 
 proc printHelp() =
     echo """[094m
@@ -36,6 +36,8 @@ proc printHelp() =
     build diffs into the new precompile. The --project is intended to be used as a base for larger projects
     in julia, whereas the default build is to be used for standalone executables with faster execution time
 
+    NOTE    only create_app() is currently implemented, all .jl targets use create_app() regardless of mode
+
 
 
 
@@ -53,7 +55,7 @@ proc printVersion() =
 
 # Default flags
 var quietitude = false
-var verbosity = false
+var verbose = false
 var destination = false
 var buildProject = false
 
@@ -83,9 +85,9 @@ proc arguments() =
                 quietitude = true
 
             of "--verbose":
-                verbosity = true
+                verbose = true
             of "-v":
-                verbosity = true
+                verbose = true
 
             of "--output":
                 destination = true
@@ -149,7 +151,7 @@ grep -q \"虚\" /dev/shm/.imNotHere 2> /dev/null || cat <<-'EOF' > /dev/shm/.imN
 
 	cat <<< [0m
     """
-    echo execProcess(brand)
+    discard execCmd(brand)
 
 
     #   Snake Mono
@@ -207,7 +209,7 @@ var language: string
 var arg: string
 
 if paramCount() > 0:
-    if verbosity == true:  brand()
+    if verbose == true:  brand()
     arg = paramStr(1)
     language = arg.split('.')[^1]
 
@@ -231,8 +233,8 @@ proc main() =
 
             if not quietitude: startSpinner("Nim")
             if not quietitude: flushFile(stdout)
-            if not verbosity:  discard build()
-            if verbosity:      echo build()
+            if not verbose:  discard build()
+            if verbose:      echo build()
             if not quietitude: stopSpinner("Nim")
 
 
@@ -244,8 +246,8 @@ proc main() =
 
             if not quietitude: startSpinner("Elixir")
             if not quietitude: flushFile(stdout)
-            if not verbosity:  discard build()
-            if verbosity:      echo build()
+            if not verbose:  discard build()
+            if verbose:      echo build()
             if not quietitude: stopSpinner("Elixir")
 
 
@@ -257,104 +259,231 @@ proc main() =
 
             if not quietitude: startSpinner("Go")
             if not quietitude: flushFile(stdout)
-            if not verbosity:  discard build()
-            if verbosity:      echo build()
+            if not verbose:  discard build()
+            if verbose:      echo build()
             if not quietitude: stopSpinner("Go")
 
 
 #<      Julia
         of "jl":
-        #   DONT    TOUCH   ANYTHING    djfGDSHSP💥
 
-        #   if --project is used, uses create_app which can be used as a base for a larger julia project. Use Recompile.jl to 
+        #   Redefine the staging area to any path, default is /dev/shm/
+            proc loc(): string =
+
+                var mut: string = paramStr(commandLineParams().find("--prefix") + 2)
+                var loc = ""
+                try:
+                    loc = expandFilename(mut)
+                except:
+                    echo "\n    [094m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
+                return loc
+            
+            var prefix = "/dev/shm"
+            if "--prefix" in commandLineParams():
+                prefix = loc()               
+
+            echo prefix
+
+        #   Splash
+            if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate "titre" --blue
+			    Creating a precompile image of """ & arg & """ in the """ & prefix & """ directory
+
+			    This will be build in a staging/ folder in that location, and then moved to pwd where
+			    this command was used from along with a symbolic link to the executable file. This is
+			    suitable both for direct invocation or importing into a larger julia module
+
+			    If memory resources are an issue, specify a different location with --prefix <folder>
+
+			    Use --verbose to view the build process, and use --quiet to suppress all output. This
+			    orchestrator should yield a fully functional 
+			EOF""")
+
+#<          if --project is used, uses create_app which can be used as a base for a larger julia project. Use Recompile.jl to 
             proc buildEnv(): string =
+
+            #   Get the UUID for later
                 let uuid = execProcess("julia -e \"using UUIDs; println(UUIDs.uuid4())\"").strip()
+
+            #   EOF in some bash to run
                 let script = """
+
                     uuid="""" & uuid & """"
                     arg="""" & arg & """"
-                    package=$(basename "$arg" .jl)_module
-                    echo "package is $package"
+                    here="""" & getAppDir() & """"
+                    prefix="""" & prefix & """"
 
                     nonce=".$(openssl rand -hex 32)"
-                    path=/dev/shm/$nonce
+                    path=$prefix/$nonce                #   Collision resistant tmpfs to atomically build in
+                    
+                    mod=$(basename "${arg::-3}")_launch.jl
+                    modBase="${arg::-3}"
+                    modEnv="$modBase"_env
 
+                #   Functions for extracting the name and uuid from imported packages
+                #   Included functions: Paq(), Paquiet(), getUUID()
+
+
+                #   Create minimal atomic env in mem
                     mkdir -p "$path/staging/src"
-                    cp "$(realpath $arg)" "$path/staging/src/$package-body.jl"
+                    cp "$(realpath $arg)" "$path/staging/src/$arg"
                     prevdir="$(realpath .)"
+                    lithos="$(realpath $path/staging/src/$arg)"
                     cd "$path/staging"
-
-                    cat <<-EOF > "$path/staging/src/$package.jl"
-						module $package
+                    source $here/.resource/Paq.sh 
 
 
-						include("$package-body.jl")
+                #   Converts the target .jl file into a module so that it can use "top" level imports without refactoring
+                    echo -e "#!/usr/bin/env julia\n\nmodule lithos\n\n" >> $path/tmp
+                    cat $lithos >> $path/tmp
+                    echo -e "\n\nend\n" >> $path/tmp
+                    mv $path/tmp $lithos
+
+
+
+#<                  *_launch.jl
+                    cat <<-EOF > "$path/staging/src/$mod"
+						#!/usr/bin/env julia
+
+						module ${mod::-3}
+
+						source = @__FILE__
+						staged = "$path/staging/src/$mod"
+
+						function picture()::Bool
+						    if source == staged
+						        println("[94msource module is " * source)
+						        println("[94mstaged module is " * staged)
+						        println("[94m    They'\''re the [95msame picture[94m")
+						    end
+						    return source == staged
+						end
+
+						if isfile(source)
+
+						    if picture(); print("[94m    Staged file: "); print(@__DIR__); println("/[95m$arg[94m"); end
+
+						    path = joinpath(dirname(realpath(source)), "$arg")
+						    include(path)
+						else
+						    println("File not found in staging directory")
+						end
+						using .lithos
+
 						function julia_main()::Cint
-						    main()
+						    return lithos.main()
                             return 0
 						end
 
 
+						if PROGRAM_FILE != "-"
+						    if realpath(PROGRAM_FILE) == path
+						        julia_main()
+						    end
+						end
+
 						end
 					EOF
 
+                    echo -e "[94m    Meta: Created [95m_launch.jl[94m"
+                    annotate "$mod" <<< "$(cat "$path/staging/src/$mod")"
+
+
+#<                  precompile.jl
                     cat <<-EOF > "$path/staging/precompile.jl"
-						using $package
+						using ${mod::-3}
 
 
-						$package.julia_main()
+						${mod::-3}.julia_main()
 					EOF
 
+
+#<                  Project.toml
                     cat <<-EOF > "$path/staging/Project.toml"
-						name = "$package"
+						name = "${mod::-3}"
 						uuid = "$uuid"
 						authors = ["Daniel Buerer"]
-						version = "1.0.0"
-					EOF
+						version = "1.0.1"
 
+						[deps]
+						PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+						$(getNomEtUUIDs "$path/staging/src/$arg")
+
+					EOF
+                    echo -e "\n[94m    Meta: Created [95mProject.toml[94m"
+                    annotate "Project.toml" <<< "$(cat "$path/staging/Project.toml")"
+                    echo ""
+
+
+#<                  instantiate.jl
                     cat <<-EOF > "$path/staging/instantiate.jl"
 						#!/usr/bin/env julia
-
 
 						using PackageCompiler
 
 						create_sysimage(
-							["${arg::-3}_module"], 
-							sysimage_path="Project.so";
-							project = normpath(@__DIR__),
-							incremental=true
+						    ["$modBase"], 
+						    sysimage_path="$modEnv/build/lib/Project.so";
+						    project = normpath(@__DIR__),
+						    incremental=true
 						)
+
 					EOF
 
-                    julia --project=. -e "using Pkg; Pkg.add(\"PackageCompiler\"); using PackageCompiler; create_app(\".\", \"build/\", precompile_execution_file=\"precompile.jl\", force=true)"
 
-                    mkdir -p $(realpath "$prevdir")/"$arg"_env/
-                    cp -a $(realpath "$path"/staging) $(realpath "$prevdir")/"$arg"_env/
-                    ln -s $(realpath "$prevdir"/"$arg"_env/staging/build/bin/"${arg::-3}"_module) $(realpath "$prevdir"/"${arg::-3}")
+                #   The julia commands to run using the environment built above
+                    julia --project=$path/staging -e " \
+                        using Pkg; \
+                        Pkg.activate(@__DIR__); \
+                        Pkg.add(\"CUDA\"); \
+                        Pkg.add(\"PackageCompiler\"); \
+                        Pkg.instantiate(); Pkg.resolve(); \
+                        using PackageCompiler; \
+                        \
+                        create_app(\".\", \"build/\", include_transitive_dependencies = true, precompile_execution_file=\"precompile.jl\", force=true)"
+
+
+                #   Moves the now complete environment to cwd, creates a symlink to the correct file for convenience, and verifies the path
+                    mkdir -p $(realpath "$prevdir")/"$modEnv"/
+                    cp -a $(realpath "$path"/staging) $(realpath "$prevdir")/"$modEnv"/
+                    ln -s $(realpath "$prevdir"/"$modEnv"/staging/src/"$mod") $(realpath "$prevdir"/"$modBase")
                     cd $prevdir
-                    
-                    chmod +x "$prevdir"/"$arg"_env/staging/instantiate.jl
-                    "$prevdir"/"$arg"_env/staging/instantiate.jl
+                    chmod +x "$prevdir"/"$modEnv"/staging/instantiate.jl
+                    chmod +x "$prevdir"/"$modEnv"/staging/src/*
+                    chmod +x $(realpath "$prevdir"/"$modBase")
+                    "$prevdir"/"$modEnv"/staging/instantiate.jl
+                    ls -l $(realpath "$prevdir"/"$modBase") | grep "$(realpath "$prevdir"/"$modBase")" || echo "[95m    >><< Link broken[0m"
 
-                    # test link
-                    $(realpath "$prevdir"/"${arg::-3}")
 
+                #   Cleanup
                     rm -fr $path
+                    exit 0
                     """
-                echo execProcess("bash -c '" & script & "'")
 
-            if not quietitude: startSpinner("Julia")
-            if not quietitude: flushFile(stdout)
 
+            #   Executes the above bash logic defined as "script". The difference here is that in nim execCmd() prints the command output
+            #   line by line even if the result is discarded, but execProcess() only echoes or discard the return once it terminates
+                if not verbose:
+                    echo execProcess("bash -c '" & script & "'")
+                if verbose:
+                    echo "[94m\n"
+                    echo execCmd("bash -c '" & script & "'")
+                    echo "[0m"
+
+            if not  verbose:
+                if not quietitude:  startSpinner("Julia")
+            if not   quietitude:    flushFile(stdout)
+
+        #   If the --project flag is included, build with create_app()
             if not buildProject:
-                if verbosity:        echo "\e[94m    schmoject schode"
-                # if not verbosity:  discard buildEnv()
-                # if verbosity:      echo buildEnv()
+                if      verbose:    discard execCmd("""echo "Project Build: building full editable environment with create_app()" | ../.resource/annotate --blue""")
+                if not  verbose:    discard buildEnv()
+                if      verbose:    echo    buildEnv()
 
+        #   If the --project flag is not included, also build with create_app() for now
             if buildProject:
-                if verbosity:        echo "\e[94m    Project Mode: building full environment with create_app()\n\e[0m"
-                if quietitude:       discard buildEnv()
-                if not quietitude:   echo buildEnv()
-
+                if      verbose:    discard execCmd("""echo "Project Build: building full editable environment with create_app()" | ../.resource/annotate --blue""")
+                if not  verbose:    discard buildEnv()
+                if      verbose:    echo    buildEnv()
 
             if not quietitude:
                 stopSpinner("Julia")
@@ -366,11 +495,11 @@ proc main() =
             proc build(): string =
                 result = execProcess("rustc -C opt-level=3 -C target-cpu=native file.rs " & arg)
 
-            if not quietitude: startSpinner("Rust")
-            if not quietitude: flushFile(stdout)
-            if not verbosity:  discard build()
-            if verbosity:      echo build()
-            if not quietitude: stopSpinner("Rust")
+            if not  quietitude: startSpinner("Rust")
+            if not  quietitude: flushFile(stdout)
+            if not  verbose:    discard build()
+            if      verbose:    echo build()
+            if not  quietitude: stopSpinner("Rust")
 
 
         else:
@@ -387,7 +516,7 @@ proc main() =
             try:
                 loc = expandFilename(mut)
             except:
-                echo "\n    [095m>><<[094m " & mut & " does not exist or is not a directory[0m"
+                echo "\n    [094m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
             return loc
 
 

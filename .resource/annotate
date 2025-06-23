@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+
+        version="1.0.1"
+
+    if [[ $@ =~ '--version' ]]; then
+		cat <<< "[94m
+		    $version
+		[0m"
+        exit 0
+    fi
+
+    if [[ $@ =~ '--help' ]] || [[ -z $1 ]]; then
+        cat <<-collision.resistant.heredoc.c2db11e25e65265ab7352aa1537a6b6f2288214a13196cb2870f04c71945750b7c5dde1d453472594acd550d1fb091545f7e1bb841a6eb6ab8631885f447207de369df5f10554687ec02f13f4b75be0b64ff32a6d2cb1dc96db1c927c06d8fdc0f926beef1fa68bbeb96e4ec26a2a21d80146a8fa4118aa3f1824eb561eb09ca4f3f0e526ab2e749996b3536d7d10070679c2d2fdce7301d55efc4481be679fd58a9e7e4eed49ac2737924e83556e4711a37702d20a6dac8a231f4d450c565a51475b1f08dfff63a435157e961f1ec2dd7062b44aeef67565d94e18e6dafa17738ebdd21a819e336e2df47925888f94b34f687377e47e4127c7e4907e37c7afc5f1f76bcb8d7e73ff2833611045d01468e6a3ad6d5ce74fa27eb583d3a2ae93d97d15c0fd8d104d43933b5a0d0be077f231262dfab824e57dddffab9f4dd66e6da55c3535323a01c6a42b8bdd780cf61fbd30c069068071f6632e745586cc123c2c3ed28ec6076f600aae5b76b7f6935ca5a4d352a2dee865c71e99f8603dc9c8377f1d99d1a52194a3907110aaae332dd7ff0817bcda126dd36e4805618a6158b3c2583b9dabd591d7036e16af7ae8d6afcd7f535624084e48cf246cdf132ffb3395a60ecee6035b080aa597bab6c3a8612ff5d331c953edb05d120286f1da1e546550817c017d288ead590a4831cfbc170440be38f2650bd8e3e38dda12eczTOINFINITY
+			[94m
+		    Formats any input file or piped input with a visually separated bracket
+                and colouring the piped input line by line if a colour flag is used
+
+            
+            Usage:
+                <stdin> | annotate <title> <--flags>
+
+
+            Flags:
+
+                --help      Return this help page
+                --version   Return the installed version
+                
+                --white
+                --black
+                --grey|--gray
+                --veryblack
+                --brown
+                --red
+                --purple
+                --blue
+                --turquoise
+                --green
+                --yellow
+
+                #   same ones but bold
+                --whitebold
+                --blackbold
+                --greybold|--graybold
+                --veryblackbold
+                --brownbold
+                --redbold
+                --purplebold
+                --bluebold
+                --turquoisebold
+                --greenbold
+
+                --random
+
+                --custom <arg>  #   Prepend all lines with a custom colour in the format "(R, G, B)" in single or double quotes
+                                #   Indigo has a 
+
+                $ cat "The Color Purple" | annotate "This text is indigo" --custom "(95, 0, 135)"
+                ┌ This text is indigo --custom (95, 0, 135)
+                │  Porpl
+                └
+
+
+                see here for a list of colours
+                https://www.ditig.com/256-colors-cheat-sheet
+
+
+		    Examples: 
+
+			    $ annotate sysinfo /etc/os-release
+			    ┌ sysinfo
+			    │  NAME="Fedora Linux"
+			    │  VERSION="41 (Workstation Edition)"
+			    ...
+			    │  VARIANT_ID=workstation
+			    └
+
+			    $ uname -r | annotate kernel
+			    ┌ kernel
+			    │  4.16.19-700.fu41.x86_64
+			    └
+
+			    $ annotate example <<< "echo test"
+			    ┌ example
+			    │  echo test
+		        └ 
+            
+		        $ annotate example <<-EOF
+		        multilinegual
+			        line
+			        after
+			        line
+			    EOF
+			    ┌ example
+			    │      line
+			    │      after
+			    │      line
+			    └
+
+			    $ dnf search fakePackage | annotate --blue "$message"
+			    ┌ Using the pipe character causes the stderr to overlap the bracket resulting in a unique effect for processes
+			    Updating and loading repositories:
+			    Repositories loaded.
+			    │  No matches found.
+			    └
+
+                If this specific format were to be wrapped in a function, it could make complex cli output more modular and readable
+                with the colour flags differentiating the different types of output. If you want only the box bracket to be coloured
+                the lines themselves would start with the default colour for the application or with a [0m
+
+                The title text
+
+
+            [0m
+		collision.resistant.heredoc.c2db11e25e65265ab7352aa1537a6b6f2288214a13196cb2870f04c71945750b7c5dde1d453472594acd550d1fb091545f7e1bb841a6eb6ab8631885f447207de369df5f10554687ec02f13f4b75be0b64ff32a6d2cb1dc96db1c927c06d8fdc0f926beef1fa68bbeb96e4ec26a2a21d80146a8fa4118aa3f1824eb561eb09ca4f3f0e526ab2e749996b3536d7d10070679c2d2fdce7301d55efc4481be679fd58a9e7e4eed49ac2737924e83556e4711a37702d20a6dac8a231f4d450c565a51475b1f08dfff63a435157e961f1ec2dd7062b44aeef67565d94e18e6dafa17738ebdd21a819e336e2df47925888f94b34f687377e47e4127c7e4907e37c7afc5f1f76bcb8d7e73ff2833611045d01468e6a3ad6d5ce74fa27eb583d3a2ae93d97d15c0fd8d104d43933b5a0d0be077f231262dfab824e57dddffab9f4dd66e6da55c3535323a01c6a42b8bdd780cf61fbd30c069068071f6632e745586cc123c2c3ed28ec6076f600aae5b76b7f6935ca5a4d352a2dee865c71e99f8603dc9c8377f1d99d1a52194a3907110aaae332dd7ff0817bcda126dd36e4805618a6158b3c2583b9dabd591d7036e16af7ae8d6afcd7f535624084e48cf246cdf132ffb3395a60ecee6035b080aa597bab6c3a8612ff5d331c953edb05d120286f1da1e546550817c017d288ead590a4831cfbc170440be38f2650bd8e3e38dda12eczTOINFINITY
+        exit 0
+    fi
+
+    couleur=""
+    for argument in $@; do
+    case $argument in
+
+        --white)
+            couleur="[37m"
+            
+        ;;
+
+        --black)
+            couleur="[30m"
+            
+        ;;
+
+        --grey|--gray)
+            couleur="[90m"
+            
+        ;;
+
+        --brown)
+            couleur="[33m"
+            
+        ;;
+
+        --red)
+            couleur="[31m"
+            
+        ;;
+
+        --purple)
+            couleur="[95m"
+            
+        ;;
+
+        --blue)
+            couleur="[94m"
+            
+        ;;
+
+        --turquoise)
+            couleur="[36m"
+            
+        ;;
+
+        --green)
+            couleur="[32m"
+            
+        ;;
+
+        --yellow)
+            couleur="[38;2;255;255;0m"
+        
+        ;;
+
+        --whitebold)
+            couleur="[1;37m"
+            
+        ;;
+
+        --blackbold)
+            couleur="[1;30m"
+            
+        ;;
+
+        --greybold|--graybold)
+            couleur="[1;90m"
+            
+        ;;
+
+        --brownbold)
+            couleur="[1;33m"
+            
+        ;;
+
+        --redbold)
+            couleur="[1;31m"
+            
+        ;;
+
+        --purplebold)
+            couleur="[1;95m"
+            
+        ;;
+
+        --bluebold)
+            couleur="[1;94m"
+            
+        ;;
+
+        --turquoisebold)
+            couleur="[1;36m"
+            
+        ;;
+
+        --greenbold)
+            couleur="[1;32m"
+            
+        ;;
+
+        --random)
+            liste=(
+                [31m
+                [95m
+                [91m
+                [36m
+                [32m
+            )
+            couleur="${liste[RANDOM % ${#liste[@]}]}"
+
+        ;;
+
+        --custom)
+            c=("$@")
+            input="${c[$((i + 2))]}"
+            array=($input)
+
+            rouge=${array[0]//[\(\),]/}
+            bleue=${array[1]//[\(\),]/}
+            verte=${array[2]//[\(\),]/}
+
+            couleur="[38;2;$rouge;$bleue;$verte"m
+
+        ;;
+
+    esac
+    done
+
+
+titre=""
+[[ $1 != --* ]] && titre="$1"
+monolith() {
+
+    minilith() {        #   the nestled function here sanitizes positional arguments
+        
+        if [[ -n $titre ]]; then 
+            local connexion="┄"
+        fi
+
+        awk -v titre="$titre" -v couleur="$couleur" -v connexion="$connexion" -v rendre="[0m" '
+        BEGIN   {
+                    printf("%s┌%s%s\n"),
+                    sprintf(couleur, 027),
+                    connexion,
+                    titre
+                }
+
+                {
+                    printf("%s│   %s\n"),
+                    sprintf(couleur, 027),
+                    $0
+                }
+
+        END     {
+                    printf("%s└\n%s"),
+                    sprintf(couleur, 027),
+                    rendre
+                }
+        ' "$2"
+    }
+
+    minilith $1
+
+
+    # Assets Folder
+    # ┌
+    # │
+    # └
+
+}; 
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    monolith $@
+fi
