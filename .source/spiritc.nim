@@ -282,17 +282,17 @@ proc main() =
                 prefix = loc()
 
         #   Splash
-            if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate "titre" --blue
-			    Creating a precompile image of """ & arg & """ in the """ & prefix & """ directory
+            if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate [95m"titre" --blue
+				Creating a precompile image of """ & arg & """ in the """ & prefix & """ directory
 
-			    This will be build in a staging/ folder in that location, and then moved to pwd where
-			    this command was used from along with a symbolic link to the executable file. This is
-			    suitable both for direct invocation or importing into a larger julia module
+				This will be build in a staging/ folder in that location, and then moved to pwd where
+				this command was used from along with a symbolic link to the executable file. This is
+				suitable both for direct invocation or importing into a larger julia module
 
-			    If memory resources are an issue, specify a different location with --prefix <folder>
+				If memory resources are an issue, specify a different location with --prefix <folder>
 
-			    Use --verbose to view the build process, and use --quiet to suppress all output. This
-			    orchestrator should yield a fully functional 
+				Use --verbose to view the build process, and use --quiet to suppress all output. This
+				orchestrator should yield a fully functional 
 			EOF""")
 
 #<          if --project is used, uses create_app which can be used as a base for a larger julia project. Use Recompile.jl to 
@@ -346,52 +346,7 @@ proc main() =
 
                     import $(realpath "$prevdir/.assets/_launch.jl") > "$path/staging/src/$mod"
 
-
-                    # cat <<-EOF > "$path/staging/src/$mod"
-					# 	#!/usr/bin/env julia
-
-					# 	module $mod3
-
-					# 	source = @__FILE__
-					# 	staged = "$path/staging/src/$mod"
-
-					# 	function picture()::Bool
-					# 	    # if source == staged
-					# 	    #     println("[94msource image is " * source)
-					# 	    #     println("[94mstaged image is " * staged)
-					# 	    #     println("[94m    They'\''re the [95msame picture[94m")
-					# 	    # end
-					# 	    return source == staged
-					# 	end
-
-					# 	if isfile(source)
-
-					# 	    if picture(); print("[94m    Staged file: "); print(@__DIR__); println("/[95m$arg[94m"); end
-
-					# 	    path = joinpath(dirname(realpath(source)), "$arg")
-					# 	    include(path)
-					# 	else
-					# 	    println("File not found in staging directory")
-					# 	end
-					# 	using .lithos
-
-					# 	function julia_main()::Cint
-					# 	    return lithos.main()
-                    #         return 0
-					# 	end
-
-
-					# 	if PROGRAM_FILE != "-"
-					# 	    if realpath(PROGRAM_FILE) == path
-					# 	        julia_main()
-					# 	    end
-					# 	end
-
-					# 	end
-					# EOF
-
-                    echo -e "[94m    Meta: Created [95m_launch.jl[94m"
-                    annotate "$mod" <<< "$(cat "$path/staging/src/$mod")"
+                    annotate [95m"$mod" --blue <<< "$(cat "$path/staging/src/$mod")"
 
 #<                  precompile.jl
                     cat <<-EOF > "$path/staging/precompile.jl"
@@ -414,8 +369,8 @@ proc main() =
 						$(getNomEtUUIDs "$path/staging/src/$arg")
 
 					EOF
-                    echo -e "\n[94m    Meta: Created [95mProject.toml[0m"
-                    annotate "Project.toml" --blue <<< "$(cat "$path/staging/Project.toml")"
+
+                    annotate [95m"Project.toml" --blue <<< "$(cat "$path/staging/Project.toml")"
                     echo ""
 
 
@@ -426,21 +381,7 @@ proc main() =
 
                     import $(realpath "$prevdir/.assets/instantiate.jl") > "$path/staging/instantiate.jl"
 
-                    # cat <<-EOF > "$path/staging/instantiate.jl"
-					# 	#!/usr/bin/env julia
-
-					# 	using PackageCompiler
-
-					# 	create_sysimage(
-					# 	    ["$modBase"], 
-					# 	    sysimage_path="$modEnv/build/lib/Project.so";
-					# 	    project = normpath(@__DIR__),
-					# 	    incremental=true
-					# 	)
-
-					# EOF
-
-                    annotate "instantiate.jl" --blue <<< "$(cat "$path/staging/instantiate.jl")"
+                    annotate [95m"instantiate.jl" --blue <<< "$(cat "$path/staging/instantiate.jl")"
 
 
                 #   The julia commands to run using the environment built above
