@@ -3,7 +3,6 @@ import  osproc
 import  os
 # import  times
 import threadpool
-import sequtils
 
 
 var version = "v.2.3.3"
@@ -280,9 +279,7 @@ proc main() =
             
             var prefix = "/dev/shm"
             if "--prefix" in commandLineParams():
-                prefix = loc()               
-
-            echo prefix
+                prefix = loc()
 
         #   Splash
             if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate "titre" --blue
@@ -312,7 +309,7 @@ proc main() =
                     here="""" & getAppDir() & """"
                     prefix="""" & prefix & """"
 
-                    nonce=".$(openssl rand -hex 32)"
+                    nonce=".$(openssl rand -hex 32).atom"
                     path=$prefix/$nonce                #   Collision resistant tmpfs to atomically build in
                     
                     mod=$(basename "${arg::-3}")_launch.jl
@@ -329,7 +326,7 @@ proc main() =
                     prevdir="$(realpath .)"
                     lithos="$(realpath $path/staging/src/$arg)"
                     cd "$path/staging"
-                    source $here/.resource/Paq.sh 
+                    source $here/.resource/Functions.sh
 
 
                 #   Converts the target .jl file into a module so that it can use "top" level imports without refactoring
@@ -341,52 +338,60 @@ proc main() =
 
 
 #<                  *_launch.jl
-                    cat <<-EOF > "$path/staging/src/$mod"
-						#!/usr/bin/env julia
 
-						module ${mod::-3}
+                    export path=$path
+                    export mod=$mod
+                    export mod3=${mod::-3}
+                    export arg=$arg
 
-						source = @__FILE__
-						staged = "$path/staging/src/$mod"
-
-						function picture()::Bool
-						    if source == staged
-						        println("[94msource module is " * source)
-						        println("[94mstaged module is " * staged)
-						        println("[94m    They'\''re the [95msame picture[94m")
-						    end
-						    return source == staged
-						end
-
-						if isfile(source)
-
-						    if picture(); print("[94m    Staged file: "); print(@__DIR__); println("/[95m$arg[94m"); end
-
-						    path = joinpath(dirname(realpath(source)), "$arg")
-						    include(path)
-						else
-						    println("File not found in staging directory")
-						end
-						using .lithos
-
-						function julia_main()::Cint
-						    return lithos.main()
-                            return 0
-						end
+                    import $(realpath "$prevdir/.assets/_launch.jl") > "$path/staging/src/$mod"
 
 
-						if PROGRAM_FILE != "-"
-						    if realpath(PROGRAM_FILE) == path
-						        julia_main()
-						    end
-						end
+                    # cat <<-EOF > "$path/staging/src/$mod"
+					# 	#!/usr/bin/env julia
 
-						end
-					EOF
+					# 	module $mod3
+
+					# 	source = @__FILE__
+					# 	staged = "$path/staging/src/$mod"
+
+					# 	function picture()::Bool
+					# 	    # if source == staged
+					# 	    #     println("[94msource image is " * source)
+					# 	    #     println("[94mstaged image is " * staged)
+					# 	    #     println("[94m    They'\''re the [95msame picture[94m")
+					# 	    # end
+					# 	    return source == staged
+					# 	end
+
+					# 	if isfile(source)
+
+					# 	    if picture(); print("[94m    Staged file: "); print(@__DIR__); println("/[95m$arg[94m"); end
+
+					# 	    path = joinpath(dirname(realpath(source)), "$arg")
+					# 	    include(path)
+					# 	else
+					# 	    println("File not found in staging directory")
+					# 	end
+					# 	using .lithos
+
+					# 	function julia_main()::Cint
+					# 	    return lithos.main()
+                    #         return 0
+					# 	end
+
+
+					# 	if PROGRAM_FILE != "-"
+					# 	    if realpath(PROGRAM_FILE) == path
+					# 	        julia_main()
+					# 	    end
+					# 	end
+
+					# 	end
+					# EOF
 
                     echo -e "[94m    Meta: Created [95m_launch.jl[94m"
                     annotate "$mod" <<< "$(cat "$path/staging/src/$mod")"
-
 
 #<                  precompile.jl
                     cat <<-EOF > "$path/staging/precompile.jl"
@@ -409,25 +414,33 @@ proc main() =
 						$(getNomEtUUIDs "$path/staging/src/$arg")
 
 					EOF
-                    echo -e "\n[94m    Meta: Created [95mProject.toml[94m"
-                    annotate "Project.toml" <<< "$(cat "$path/staging/Project.toml")"
+                    echo -e "\n[94m    Meta: Created [95mProject.toml[0m"
+                    annotate "Project.toml" --blue <<< "$(cat "$path/staging/Project.toml")"
                     echo ""
 
 
 #<                  instantiate.jl
-                    cat <<-EOF > "$path/staging/instantiate.jl"
-						#!/usr/bin/env julia
+                    # export path=$path
+                    export modBase=$modBase
+                    export modEnv=$modEnv
 
-						using PackageCompiler
+                    import $(realpath "$prevdir/.assets/instantiate.jl") > "$path/staging/instantiate.jl"
 
-						create_sysimage(
-						    ["$modBase"], 
-						    sysimage_path="$modEnv/build/lib/Project.so";
-						    project = normpath(@__DIR__),
-						    incremental=true
-						)
+                    # cat <<-EOF > "$path/staging/instantiate.jl"
+					# 	#!/usr/bin/env julia
 
-					EOF
+					# 	using PackageCompiler
+
+					# 	create_sysimage(
+					# 	    ["$modBase"], 
+					# 	    sysimage_path="$modEnv/build/lib/Project.so";
+					# 	    project = normpath(@__DIR__),
+					# 	    incremental=true
+					# 	)
+
+					# EOF
+
+                    annotate "instantiate.jl" --blue <<< "$(cat "$path/staging/instantiate.jl")"
 
 
                 #   The julia commands to run using the environment built above

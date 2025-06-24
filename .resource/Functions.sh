@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+echo test
 
 getPaquet() {
 
@@ -138,4 +138,22 @@ listUUID() {
     cat $zone
     rm $zone
 
+}
+
+
+import() {
+
+    if [[ -z $1 ]] || [[ $1 == '-' ]]; then
+        input="/dev/stdin"
+    else
+        input="$1"
+    fi
+
+    if [[ -n $2 ]]; then
+        output="$2"
+    else
+        output="/dev/stdout"
+    fi
+
+    envsubst < "$input" > "$output"
 }
