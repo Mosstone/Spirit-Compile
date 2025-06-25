@@ -1,8 +1,7 @@
 import  strutils
 import  osproc
 import  os
-# import  times
-import threadpool
+import  threadpool
 
 
 var version = "v.2.3.3"
@@ -28,16 +27,6 @@ proc printHelp() =
         Julia
 
 
-    For julia, there are two modes. Default spiritc builds uses create_executable() which produces a binary
-    Using the --project flag while targeting a .jl module uses create_app() instead, creating a environment
-    directory at the location of the target (no -o specification for this), along with a symlink to execute
-    the module with. This comes injected with a Recompile.jl file at the project root, which can be used to
-    build diffs into the new precompile. The --project is intended to be used as a base for larger projects
-    in julia, whereas the default build is to be used for standalone executables with faster execution time
-
-    NOTE    only create_app() is currently implemented, all .jl targets use create_app() regardless of mode
-
-
 
 
 
@@ -56,7 +45,7 @@ proc printVersion() =
 var quietitude = false
 var verbose = false
 var destination = false
-var buildProject = false
+var mode = "null"
 
 var outputflag = "null"
 
@@ -96,7 +85,10 @@ proc arguments() =
                 outputflag = "-o"
 
             of "--project":
-                buildProject = true
+                mode = "project"
+
+            of "--app":
+                mode = "app"
 
             else:
                 discard
@@ -180,7 +172,7 @@ var spinnerThread: Thread[string]
 proc spinnerLoop(name: string) {.thread, gcsafe.} =
     var i = 0
     while spinning:
-        stdout.write("\r\e[94m " & animationBloom[i mod animationBloom.len] & " Compiling "  & name & "...\e[0m")
+        stdout.write("\r\e[94m " & animationBloom[i mod animationBloom.len] & " Compiling " & name & "...\e[0m")
         flushFile(stdout)
         i.inc
         sleep(100)  # 100 ms between frames
@@ -192,7 +184,7 @@ proc startSpinner(name: string) =
 proc stopSpinner(name: string) =
     spinning = false
     joinThread(spinnerThread)
-    stdout.write("\r\e[94m  ✓ Compiling "  & name & "...done\e[0m\n")
+    stdout.write("\r\e[94m  ✓ Compiling " & name & "...done\e[0m\n")
     flushFile(stdout)
 
 
@@ -254,7 +246,7 @@ proc main() =
         of "go":
 
             proc build(): string =
-                result = execProcess("GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags='-s -w' " & arg)
+                result = execProcess("GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags='-s -w' " & arg)
 
             if not quietitude: startSpinner("Go")
             if not quietitude: flushFile(stdout)
@@ -266,6 +258,12 @@ proc main() =
 #<      Julia
         of "jl":
 
+        #   Default mode reassigment
+            if mode == "null":
+                mode = "project"
+                if verbose: echo "[94m    Defaulting to [95m" & mode & "[94m mode[0m"
+
+
         #   Redefine the staging area to any path, default is /dev/shm/
             proc loc(): string =
 
@@ -274,22 +272,22 @@ proc main() =
                 try:
                     loc = expandFilename(mut)
                 except:
-                    echo "\n    [094m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
+                    echo "\n    [031m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
                 return loc
             
             var prefix = "/dev/shm"
             if "--prefix" in commandLineParams():
                 prefix = loc()
 
-        #   Splash
-            if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate [95m"titre" --blue
-				Creating a precompile image of """ & arg & """ in the """ & prefix & """ directory
+        #   Info
+            if not quietitude: discard execCmd("""cat <<-EOF | ../.resource/annotate --blue 
+				Creating a precompile image of """ & arg & """ in the [95m""" & prefix & """[94m directory
 
 				This will be build in a staging/ folder in that location, and then moved to pwd where
 				this command was used from along with a symbolic link to the executable file. This is
 				suitable both for direct invocation or importing into a larger julia module
 
-				If memory resources are an issue, specify a different location with --prefix <folder>
+				If memory resources are an issue, specify a different location with [95m--prefix <folder>[94m
 
 				Use --verbose to view the build process, and use --quiet to suppress all output. This
 				orchestrator should yield a fully functional 
@@ -301,23 +299,26 @@ proc main() =
             #   Get the UUID for later
                 let uuid = execProcess("julia -e \"using UUIDs; println(UUIDs.uuid4())\"").strip()
 
-            #   EOF in some bash to run
+            #   Use bash to manually create the environment in the staging directory
                 let script = """
 
                     uuid="""" & uuid & """"
-                    arg="""" & arg & """"
+                    arg="""" & paramStr(1) & """"
                     here="""" & getAppDir() & """"
                     prefix="""" & prefix & """"
-
+                    mode="""" & mode & """"
                     nonce=".$(openssl rand -hex 32).atom"
                     path=$prefix/$nonce                #   Collision resistant tmpfs to atomically build in
-                    
+
                     mod=$(basename "${arg::-3}")_launch.jl
                     modBase="${arg::-3}"
                     modEnv="$modBase"_env
 
-                #   Functions for extracting the name and uuid from imported packages
-                #   Included functions: Paq(), Paquiet(), getUUID()
+
+                    if ! grep -E "^function main\(" "$arg" &>/dev/null; then
+                        echo "[31m    >><<[94m Sourced julia file [95m$arg[94m needs a [95mmain()[94m function for [95mPackageCompiler.jl[94m to work"
+                        exit 1
+                    fi
 
 
                 #   Create minimal atomic env in mem
@@ -326,7 +327,27 @@ proc main() =
                     prevdir="$(realpath .)"
                     lithos="$(realpath $path/staging/src/$arg)"
                     cd "$path/staging"
-                    source $here/.resource/Functions.sh
+
+
+#<                  Dot Imports
+                    . $here/.resource/Functions.sh
+                    #   provides:
+                    #       Paq()           Get the packages in a julia file
+                    #       Paquiet()       Same thing but with no error out
+                    #       getUUID()       Get UUID list Project.toml needs
+                    #       getNomEtUUIDs() Same thing, joined and formatted
+
+                    . $here/.resource/imply
+                    #   provides:
+                    #       imply()         Pull files and expands variables
+
+                    . $here/.resource/annotate
+                    #   provides:
+                    #       annotate()      Create a box bracket around text
+                    #                       provided from stdin and print it
+                    #                       to cli formatted and with colour 
+
+
 
 
                 #   Converts the target .jl file into a module so that it can use "top" level imports without refactoring
@@ -338,15 +359,14 @@ proc main() =
 
 
 #<                  *_launch.jl
-
                     export path=$path
                     export mod=$mod
                     export mod3=${mod::-3}
-                    export arg=$arg
+                    export arg="""" & paramStr(1) & """"
+                    export hasMain=$hasMain
 
-                    import $(realpath "$prevdir/.assets/_launch.jl") > "$path/staging/src/$mod"
-
-                    annotate [95m"$mod" --blue <<< "$(cat "$path/staging/src/$mod")"
+                    imply $(realpath "$prevdir/.assets/_launch.jl") > "$path/staging/src/$mod"   #   Provided by .resource/Functions.sh
+                    annotate [95m"$mod" --blue <<< "$(cat "$path/staging/src/$mod")"; echo -e "\n"
 
 #<                  precompile.jl
                     cat <<-EOF > "$path/staging/precompile.jl"
@@ -362,7 +382,7 @@ proc main() =
 						name = "${mod::-3}"
 						uuid = "$uuid"
 						authors = ["Daniel Buerer"]
-						version = "1.0.1"
+						version = "1.0.2"
 
 						[deps]
 						PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
@@ -379,21 +399,37 @@ proc main() =
                     export modBase=$modBase
                     export modEnv=$modEnv
 
-                    import $(realpath "$prevdir/.assets/instantiate.jl") > "$path/staging/instantiate.jl"
+                    imply $(realpath "$prevdir/.assets/instantiate.jl") > "$path/staging/instantiate.jl"
 
                     annotate [95m"instantiate.jl" --blue <<< "$(cat "$path/staging/instantiate.jl")"
 
 
                 #   The julia commands to run using the environment built above
-                    julia --project=$path/staging -e " \
-                        using Pkg; \
-                        Pkg.activate(@__DIR__); \
-                        Pkg.add(\"CUDA\"); \
-                        Pkg.add(\"PackageCompiler\"); \
-                        Pkg.instantiate(); Pkg.resolve(); \
-                        using PackageCompiler; \
-                        \
-                        create_app(\".\", \"build/\", include_transitive_dependencies = true, precompile_execution_file=\"precompile.jl\", force=true)"
+
+                    case $mode in
+
+                        app)
+                            julia --project=$path/staging <<-EOF
+								using Pkg; 
+								Pkg.activate(@__DIR__); 
+								$(Paquiet $arg)
+								Pkg.add("PackageCompiler"); 
+								Pkg.instantiate(); Pkg.resolve(); 
+								using PackageCompiler; 
+
+								create_app(
+                                    ".",
+                                    "build/",
+                                    include_transitive_dependencies = true,
+                                    precompile_execution_file="precompile.jl",
+                                    force=true
+                                )
+					EOF
+                        ;;
+
+                        project)
+                        ;;
+                    esac
 
 
                 #   Moves the now complete environment to cwd, creates a symlink to the correct file for convenience, and verifies the path
@@ -405,7 +441,7 @@ proc main() =
                     chmod +x "$prevdir"/"$modEnv"/staging/src/*
                     chmod +x $(realpath "$prevdir"/"$modBase")
                     "$prevdir"/"$modEnv"/staging/instantiate.jl
-                    ls -l $(realpath "$prevdir"/"$modBase") | grep "$(realpath "$prevdir"/"$modBase")" || echo "[95m    >><< Link broken[0m"
+                    ls -l $(realpath "$prevdir"/"$modBase") | grep "$(realpath "$prevdir"/"$modBase")" || echo "[31m    >><<[95m Link broken[0m"
 
 
                 #   Cleanup
@@ -427,15 +463,14 @@ proc main() =
                 if not quietitude:  startSpinner("Julia")
             if not   quietitude:    flushFile(stdout)
 
-        #   If the --project flag is included, build with create_app()
-            if not buildProject:
-                if      verbose:    discard execCmd("""echo "Project Build: building full editable environment with create_app()" | ../.resource/annotate --blue""")
+        #   If the --project flag is not included, also build with create_app() for now
+            if mode == "project":
+                if not quietitude:  discard execCmd("""echo "Building a full project environment with PackageCompiler.create_app() with compiled dependencies" | ../.resource/annotate [95m"Project Mode" --blue""")
                 if not  verbose:    discard buildEnv()
                 if      verbose:    echo    buildEnv()
 
-        #   If the --project flag is not included, also build with create_app() for now
-            if buildProject:
-                if      verbose:    discard execCmd("""echo "Project Build: building full editable environment with create_app()" | ../.resource/annotate --blue""")
+            if mode == "project":
+                if not quietitude:  discard execCmd("""echo "Using create_app() to precompile. This is an official preset for create_sysimage() using conservative, generic optimizations" | ../.resource/annotate [95m"App Mode" --blue""")
                 if not  verbose:    discard buildEnv()
                 if      verbose:    echo    buildEnv()
 
@@ -470,7 +505,7 @@ proc main() =
             try:
                 loc = expandFilename(mut)
             except:
-                echo "\n    [094m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
+                echo "\n    [031m    >><<[095m " & mut & "[94m does not exist or is not a directory[0m"
             return loc
 
 

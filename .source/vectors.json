@@ -1,0 +1,35 @@
+{
+    "vectors": {
+        "Parameter A": {
+            "Parameter B" : 0.71,
+            "Parameter C": 0.65
+        },
+
+        "Parameter B": {
+            "Parameter A" : 0.76,
+            "Parameter C": 0.98
+        },
+
+        "Parameter C": {
+            "Parameter B" : 0.84,
+            "Parameter A": 0.87,
+            "Parameter E": 0.1,
+            "nonexistent": 0.0
+        },
+
+        "Parameter D": {
+            "Parameter A" : 0.3,
+            "Parameter B" : 0.6,
+            "Parameter C" : 0.2
+        },
+
+        "Parameter E": {
+            "Parameter D": 0.1,
+            "Parameter A": 0.6
+        },
+
+        "Confounding": {
+            "Parameter C": 0.99
+        }
+    }
+}

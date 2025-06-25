@@ -7,3 +7,9 @@ CITATIN.cff
 LICENSE
 
 /.examples/
+
+*.tmp
+
+.stfolder/
+
+.source/simp_env/
