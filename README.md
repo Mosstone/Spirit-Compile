@@ -21,6 +21,6 @@
         julia version 1.11.5
         Nim Compiler Version 2.2.4 [Linux: amd64]
         6.14.6-200.fc41.x86_64
-            fedora 41, current release
+            fedora 41
 
 Buerer, D. (2025). Spirit Compile (Version 1.0.0) [Computer software]. https://doi.org/10.5281/zenodo.1560533
