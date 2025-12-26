@@ -220,7 +220,7 @@ proc main() =
         of "nim":
             # name = "Nim"
             proc build(): string =
-                result = execProcess("CC=musl-gcc nim c -d:release --opt:speed --mm:orc --passC:-flto --passL:-flto --passL:-static " & arg)
+                result = execProcess("CC=musl-gcc nim c -d:release --opt:speed --mm:orc --passC:-flto --passL:-flto --passL:-static --passL:-L/usr/x86_64-linux-musl/lib64 " & arg)
 
             if not quietitude: startSpinner("Nim")
             if not quietitude: flushFile(stdout)
